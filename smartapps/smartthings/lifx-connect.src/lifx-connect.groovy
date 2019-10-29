@@ -51,7 +51,7 @@ def getCallbackUrl()             { return "${getServerUrl()}/oauth/callback" }
 def apiURL(path = '/') 			 { return "https://api.lifx.com/v1${path}" }
 def getSecretKey()               { return appSettings.secretKey }
 def getClientId()                { return appSettings.clientId }
-private getVendorName() { "LIFX" }
+def getVendorName() { "LIFX" }
 
 def authPage() {
     if (state.lifxAccessToken) {
@@ -294,7 +294,7 @@ def initialize() {
 }
 
 // Misc
-private setupDeviceWatch() {
+def setupDeviceWatch() {
     def hub = location.hubs[0]
     // Make sure that all child devices are enrolled in device watch
     getChildDevices().each {
@@ -375,6 +375,15 @@ def devicesList(selector = '') {
         } else if (resp.status == 401) {
             log.warn "Access token is not valid"
             state.lifxAccessToken = null
+        } else if (resp.status == 404 && resp.data?.error.startsWith('Could not find location_id') && selector != '') {
+            log.warn "Location is not valid"
+            def devices = devicesList()
+            devices.each { device ->
+                if (device.location.id != settings.selectedLocationId && getChildDevice(device.id)) {
+                    settings.selectedLocationId = device.location.id
+                    app.updateSetting("selectedLocationId", device.location.id)
+                }
+            }
         } else {
             String errMsg = "No response from device list call. ${resp.status} ${resp.data}"
             log.debug(errMsg)
